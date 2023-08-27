@@ -43,17 +43,22 @@ struct Extent {
 
 // Add const enforcement on the underlying language. Note that TSLanguages
 // are static and never deallocated, so there are no resources to manage.
-using Language = TSLanguage const * const;
+using Language = TSLanguage const *;
 
 // Direct alias of { row: uint32_t; column: uint32_t }
 using Point = TSPoint;
 
 using Symbol = uint16_t;
 
+using NodeID = uintptr_t;
+
 
 // For types that manage resources, create custom wrappers that ensure
 // clean-up. For types that can benefit from additional API discovery,
 // wrappers with implicit conversion allow for automated method discovery.
+
+
+class Cursor;
 
 struct Node {
   Node(TSNode node)
@@ -63,33 +68,33 @@ struct Node {
   ////////////////////////////////////////////////////////////////
   // Flag checks on nodes
   ////////////////////////////////////////////////////////////////
-  bool
+  [[nodiscard]] bool
   isNull() const {
     return ts_node_is_null(impl);
   }
 
-  bool
+  [[nodiscard]] bool
   isNamed() const {
     return ts_node_is_named(impl);
   }
 
-  bool
+  [[nodiscard]] bool
   isMissing() const {
     return ts_node_is_missing(impl);
   }
 
-  bool
+  [[nodiscard]] bool
   isExtra() const {
     return ts_node_is_extra(impl);
   }
 
-  bool
+  [[nodiscard]] bool
   hasError() const {
     return ts_node_has_error(impl);
   }
 
-  // TODO: Not yet availale in last release
-  // bool
+  // TODO: Not yet available in last release
+  // [[nodiscard]] bool
   // isError() const {
   //   return ts_node_is_error(impl);
   // }
@@ -98,64 +103,86 @@ struct Node {
   // Navigation
   ////////////////////////////////////////////////////////////////
 
-  // Direct parent/child connections
+  // Direct parent/sibling/child connections and cursors
 
-  Node
+  [[nodiscard]] Node
   getParent() const {
     return ts_node_parent(impl);
   }
 
-  uint32_t
+  [[nodiscard]] Node
+  getPreviousSibling() const {
+    return ts_node_prev_sibling(impl);
+  }
+
+  [[nodiscard]] Node
+  getNextSibling() const {
+    return ts_node_next_sibling(impl);
+  }
+
+  [[nodiscard]] uint32_t
   getNumChildren() const {
     return ts_node_child_count(impl);
   }
 
-  Node
+  [[nodiscard]] Node
   getChild(uint32_t position) const {
     return ts_node_child(impl, position);
   }
 
   // Named children
 
-  uint32_t
+  [[nodiscard]] uint32_t
   getNumNamedChildren() const {
     return ts_node_named_child_count(impl);
   }
 
-  Node
+  [[nodiscard]] Node
   getNamedChild(uint32_t position) const {
     return ts_node_named_child(impl, position);
   }
 
   // Named fields
 
-  std::string_view
+  [[nodiscard]] std::string_view
   getFieldNameForChild(uint32_t child_position) const {
     return ts_node_field_name_for_child(impl, child_position);
   }
 
-  Node
+  [[nodiscard]] Node
   getChildByFieldName(std::string_view name) const {
     return ts_node_child_by_field_name(impl,
                                        &name.front(),
                                        static_cast<uint32_t>(name.size()));
   }
 
+  // Definition deferred until after the definition of Cursor.
+  [[nodiscard]] Cursor
+  getCursor() const;
+
   ////////////////////////////////////////////////////////////////
-  //
+  // Node attributes
   ////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<char, FreeHelper>
-  getString() const {
+  // Returns a unique identifier for a node in a parse tree.
+  // NodeIDs are numeric value types.
+  [[nodiscard]] NodeID
+  getID() const {
+    return reinterpret_cast<NodeID>(impl.id);
+  }
+
+  // Returns an S-Expression representation of the subtree rooted at this node.
+  [[nodiscard]] std::unique_ptr<char, FreeHelper>
+  getSExpr() const {
     return std::unique_ptr<char,FreeHelper>{ts_node_string(impl)};
   }
 
-  Symbol
+  [[nodiscard]] Symbol
   getSymbol() const {
     return ts_node_symbol(impl);
   }
 
-  std::string_view
+  [[nodiscard]] std::string_view
   getType() const {
     return ts_node_type(impl);
   }
@@ -166,12 +193,12 @@ struct Node {
   //   return ts_node_language(impl);
   // }
 
-  Extent<uint32_t>
+  [[nodiscard]] Extent<uint32_t>
   getByteRange() const {
     return {ts_node_start_byte(impl), ts_node_end_byte(impl)};
   }
 
-  Extent<Point>
+  [[nodiscard]] Extent<Point>
   getPointRange() const {
     return {ts_node_start_point(impl), ts_node_end_point(impl)};
   }
@@ -186,9 +213,19 @@ public:
     : impl{tree, ts_tree_delete}
       { }
 
-  Node
+  [[nodiscard]] Node
   getRootNode() const {
     return ts_tree_root_node(impl.get());
+  }
+
+  [[nodiscard]] Language
+  getLanguage() const {
+    return ts_tree_language(impl.get());
+  }
+
+  [[nodiscard]] bool
+  hasError() const {
+    return getRootNode().hasError();
   }
 
 private:
@@ -203,7 +240,7 @@ public:
     ts_parser_set_language(impl.get(), language);
   }
 
-  Tree
+  [[nodiscard]] Tree
   parseString(std::string_view buffer) {
     return ts_parser_parse_string(
       impl.get(),
@@ -216,6 +253,94 @@ public:
 private:
   std::unique_ptr<TSParser, decltype(&ts_parser_delete)> impl;
 };
+
+
+class Cursor {
+public:
+  Cursor(TSNode node)
+    : impl{ts_tree_cursor_new(node)}
+      { }
+
+  Cursor(const TSTreeCursor& cursor)
+    : impl{ts_tree_cursor_copy(&cursor)}
+      { }
+
+  // By default avoid copies and moves until the ergonomics are clearer.
+  Cursor(const Cursor&) = delete;
+  Cursor(Cursor&&) = delete;
+  Cursor& operator=(const Cursor& other) = delete;
+  Cursor& operator=(Cursor&& other) = delete;
+
+  ~Cursor() {
+    ts_tree_cursor_delete(&impl);
+  }
+
+  void
+  reset(Node node) {
+    ts_tree_cursor_reset(&impl, node.impl);
+  }
+
+  // TODO: Not yet available in last release
+  // void
+  // reset(Cursor& cursor) {
+  //   ts_tree_cursor_reset_to(&impl, &cursor.impl);
+  // }
+
+  Cursor
+  copy() const {
+    return Cursor(impl);
+  }
+
+  Node
+  getCurrentNode() const {
+    return Node{ts_tree_cursor_current_node(&impl)};
+  }
+  
+  // Navigation
+
+  bool
+  gotoParent() {
+    return ts_tree_cursor_goto_parent(&impl);
+  }
+
+  bool
+  gotoNextSibling() {
+    return ts_tree_cursor_goto_next_sibling(&impl);
+  }
+
+  // TODO: Not yet available in last release
+  // bool
+  // gotoPreviousSibling() {
+  //   return ts_tree_cursor_goto_previous_sibling(&impl);
+  // }
+
+  bool
+  gotoFirstChild() {
+    return ts_tree_cursor_goto_first_child(&impl);
+  }
+
+  // TODO: Not yet available in last release
+  // bool
+  // gotoLastChild() {
+  //   return ts_tree_cursor_goto_last_child(&impl);
+  // }
+
+  // TODO: Not yet available in last release
+  // size_t
+  // getDepthFromOrigin() const {
+  //   return ts_tree_cursor_current_depth(&impl);
+  // }
+
+private:
+  TSTreeCursor impl;
+};
+
+// To avoid cyclic dependencies and ODR violations, we define all methods 
+// *using* Cursors inline after the definition of Cursor itself.
+[[nodiscard]] Cursor
+inline Node::getCursor() const {
+  return Cursor{impl};
+}
 
 }
 

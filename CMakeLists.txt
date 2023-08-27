@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.19)
 project(cpp-tree-sitter)
 
 set(PACKAGE_NAME cpp-tree-sitter)
-set(PACKAGE_VERSION 0.1)
+set(PACKAGE_VERSION 0.0.1)
 set(PACKAGE_STRING "${PACKAGE_NAME} ${PACKAGE_VERSION}")
 set(PACKAGE_BUGREPORT "wsumner@sfu.ca")
 
