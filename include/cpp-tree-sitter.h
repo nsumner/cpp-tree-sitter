@@ -41,14 +41,13 @@ struct Extent {
 // Create slightly stricter aliases for some of the core tree-sitter types.
 /////////////////////////////////////////////////////////////////////////////
 
-// Add const enforcement on the underlying language. Note that TSLanguages
-// are static and never deallocated, so there are no resources to manage.
-using Language = TSLanguage const *;
 
 // Direct alias of { row: uint32_t; column: uint32_t }
 using Point = TSPoint;
 
 using Symbol = uint16_t;
+
+using Version = uint32_t;
 
 using NodeID = uintptr_t;
 
@@ -56,6 +55,37 @@ using NodeID = uintptr_t;
 // For types that manage resources, create custom wrappers that ensure
 // clean-up. For types that can benefit from additional API discovery,
 // wrappers with implicit conversion allow for automated method discovery.
+
+struct Language {
+  Language(TSLanguage const* language)
+    : impl{language}
+      { }
+
+  [[nodiscard]] size_t
+  getNumSymols() const {
+    return ts_language_symbol_count(impl);
+  }
+
+  [[nodiscard]] std::string_view
+  getSymbolName(Symbol symbol) const {
+    return ts_language_symbol_name(impl, symbol);
+  }
+
+  [[nodiscard]] Symbol
+  getSymbolForName(std::string_view name, bool isNamed) const {
+    return ts_language_symbol_for_name(impl,
+                                       &name.front(),
+                                       static_cast<uint32_t>(name.size()),
+                                       isNamed);
+  }
+
+  [[nodiscard]] Version
+  getVersion() const {
+    return ts_language_version(impl);
+  }
+
+  TSLanguage const* impl;
+};
 
 
 class Cursor;
@@ -237,7 +267,7 @@ class Parser {
 public:
   Parser(Language language)
     : impl{ts_parser_new(), ts_parser_delete} {
-    ts_parser_set_language(impl.get(), language);
+    ts_parser_set_language(impl.get(), language.impl);
   }
 
   [[nodiscard]] Tree
