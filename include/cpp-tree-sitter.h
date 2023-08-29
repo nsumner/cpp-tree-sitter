@@ -1,5 +1,5 @@
-#ifndef CPP_TREE_SITTER
-#define CPP_TREE_SITTER
+#ifndef CPP_TREE_SITTER_H
+#define CPP_TREE_SITTER_H
 
 #include <memory>
 #include <string_view>
@@ -31,8 +31,8 @@ struct FreeHelper{
 // An inclusive range representation
 template<typename T>
 struct Extent {
-  const T start;
-  const T end;
+  T start;
+  T end;
 };
 
 
@@ -57,7 +57,11 @@ using NodeID = uintptr_t;
 // wrappers with implicit conversion allow for automated method discovery.
 
 struct Language {
-  Language(TSLanguage const* language)
+  // NOTE: Allowing implicit conversions from TSLanguage to Language
+  // improves the ergonomics a bit, as clients will still make use of the
+  // custom language functions.
+
+  /* implicit */ Language(TSLanguage const* language)
     : impl{language}
       { }
 
@@ -91,7 +95,7 @@ struct Language {
 class Cursor;
 
 struct Node {
-  Node(TSNode node)
+  explicit Node(TSNode node)
     : impl{node}
       { }
 
@@ -137,17 +141,17 @@ struct Node {
 
   [[nodiscard]] Node
   getParent() const {
-    return ts_node_parent(impl);
+    return Node{ts_node_parent(impl)};
   }
 
   [[nodiscard]] Node
   getPreviousSibling() const {
-    return ts_node_prev_sibling(impl);
+    return Node{ts_node_prev_sibling(impl)};
   }
 
   [[nodiscard]] Node
   getNextSibling() const {
-    return ts_node_next_sibling(impl);
+    return Node{ts_node_next_sibling(impl)};
   }
 
   [[nodiscard]] uint32_t
@@ -157,7 +161,7 @@ struct Node {
 
   [[nodiscard]] Node
   getChild(uint32_t position) const {
-    return ts_node_child(impl, position);
+    return Node{ts_node_child(impl, position)};
   }
 
   // Named children
@@ -169,7 +173,7 @@ struct Node {
 
   [[nodiscard]] Node
   getNamedChild(uint32_t position) const {
-    return ts_node_named_child(impl, position);
+    return Node{ts_node_named_child(impl, position)};
   }
 
   // Named fields
@@ -181,9 +185,9 @@ struct Node {
 
   [[nodiscard]] Node
   getChildByFieldName(std::string_view name) const {
-    return ts_node_child_by_field_name(impl,
-                                       &name.front(),
-                                       static_cast<uint32_t>(name.size()));
+    return Node{ts_node_child_by_field_name(impl,
+                                            &name.front(),
+                                            static_cast<uint32_t>(name.size()))};
   }
 
   // Definition deferred until after the definition of Cursor.
@@ -218,7 +222,7 @@ struct Node {
   }
 
   // TODO: Not yet available in last release
-  // Language
+  // [[nodiscard]] Language
   // getLanguage() const {
   //   return ts_node_language(impl);
   // }
@@ -245,12 +249,12 @@ public:
 
   [[nodiscard]] Node
   getRootNode() const {
-    return ts_tree_root_node(impl.get());
+    return Node{ts_tree_root_node(impl.get())};
   }
 
   [[nodiscard]] Language
   getLanguage() const {
-    return ts_tree_language(impl.get());
+    return Language{ts_tree_language(impl.get())};
   }
 
   [[nodiscard]] bool
@@ -316,47 +320,47 @@ public:
   //   ts_tree_cursor_reset_to(&impl, &cursor.impl);
   // }
 
-  Cursor
+  [[nodiscard]] Cursor
   copy() const {
     return Cursor(impl);
   }
 
-  Node
+  [[nodiscard]] Node
   getCurrentNode() const {
     return Node{ts_tree_cursor_current_node(&impl)};
   }
   
   // Navigation
 
-  bool
+  [[nodiscard]] bool
   gotoParent() {
     return ts_tree_cursor_goto_parent(&impl);
   }
 
-  bool
+  [[nodiscard]] bool
   gotoNextSibling() {
     return ts_tree_cursor_goto_next_sibling(&impl);
   }
 
   // TODO: Not yet available in last release
-  // bool
+  // [[nodiscard]] bool
   // gotoPreviousSibling() {
   //   return ts_tree_cursor_goto_previous_sibling(&impl);
   // }
 
-  bool
+  [[nodiscard]] bool
   gotoFirstChild() {
     return ts_tree_cursor_goto_first_child(&impl);
   }
 
   // TODO: Not yet available in last release
-  // bool
+  // [[nodiscard]] bool
   // gotoLastChild() {
   //   return ts_tree_cursor_goto_last_child(&impl);
   // }
 
   // TODO: Not yet available in last release
-  // size_t
+  // [[nodiscard]] size_t
   // getDepthFromOrigin() const {
   //   return ts_tree_cursor_current_depth(&impl);
   // }
