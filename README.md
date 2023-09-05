@@ -93,7 +93,7 @@ int main() {
   assert(number.getNumChildren() == 0);
 
   // Print the syntax tree as an S-expression.
-  auto treestring = root.getString();
+  auto treestring = root.getSExpr();
   printf("Syntax tree: %s\n", treestring.get());
 
   return 0;
