@@ -66,7 +66,7 @@ struct Language {
       { }
 
   [[nodiscard]] size_t
-  getNumSymols() const {
+  getNumSymbols() const {
     return ts_language_symbol_count(impl);
   }
 
