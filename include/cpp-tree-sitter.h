@@ -237,6 +237,12 @@ struct Node {
     return {ts_node_start_point(impl), ts_node_end_point(impl)};
   }
 
+  [[nodiscard]] std::string_view
+  getSourceRange(std::string_view source) const {
+    Extent<uint32_t> extents = this->getByteRange();
+    return source.substr(extents.start, extents.end - extents.start);
+  }
+
   TSNode impl;
 };
 
