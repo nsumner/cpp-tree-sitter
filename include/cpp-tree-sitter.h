@@ -5,7 +5,6 @@
 #include <string_view>
 
 #include <tree_sitter/api.h>
-#include <tree_sitter/parser.h>
 
 // Including the API directly already pollutes the namespace, but the
 // functions are prefixed. Anything else that we include should be scoped
@@ -127,11 +126,10 @@ struct Node {
     return ts_node_has_error(impl);
   }
 
-  // TODO: Not yet available in last release
-  // [[nodiscard]] bool
-  // isError() const {
-  //   return ts_node_is_error(impl);
-  // }
+  [[nodiscard]] bool
+  isError() const {
+    return ts_node_is_error(impl);
+  }
 
   ////////////////////////////////////////////////////////////////
   // Navigation
@@ -221,11 +219,10 @@ struct Node {
     return ts_node_type(impl);
   }
 
-  // TODO: Not yet available in last release
-  // [[nodiscard]] Language
-  // getLanguage() const {
-  //   return ts_node_language(impl);
-  // }
+  [[nodiscard]] Language
+  getLanguage() const {
+    return ts_node_language(impl);
+  }
 
   [[nodiscard]] Extent<uint32_t>
   getByteRange() const {
@@ -320,11 +317,10 @@ public:
     ts_tree_cursor_reset(&impl, node.impl);
   }
 
-  // TODO: Not yet available in last release
-  // void
-  // reset(Cursor& cursor) {
-  //   ts_tree_cursor_reset_to(&impl, &cursor.impl);
-  // }
+  void
+  reset(Cursor& cursor) {
+    ts_tree_cursor_reset_to(&impl, &cursor.impl);
+  }
 
   [[nodiscard]] Cursor
   copy() const {
@@ -348,28 +344,25 @@ public:
     return ts_tree_cursor_goto_next_sibling(&impl);
   }
 
-  // TODO: Not yet available in last release
-  // [[nodiscard]] bool
-  // gotoPreviousSibling() {
-  //   return ts_tree_cursor_goto_previous_sibling(&impl);
-  // }
+  [[nodiscard]] bool
+  gotoPreviousSibling() {
+    return ts_tree_cursor_goto_previous_sibling(&impl);
+  }
 
   [[nodiscard]] bool
   gotoFirstChild() {
     return ts_tree_cursor_goto_first_child(&impl);
   }
 
-  // TODO: Not yet available in last release
-  // [[nodiscard]] bool
-  // gotoLastChild() {
-  //   return ts_tree_cursor_goto_last_child(&impl);
-  // }
+  [[nodiscard]] bool
+  gotoLastChild() {
+    return ts_tree_cursor_goto_last_child(&impl);
+  }
 
-  // TODO: Not yet available in last release
-  // [[nodiscard]] size_t
-  // getDepthFromOrigin() const {
-  //   return ts_tree_cursor_current_depth(&impl);
-  // }
+  [[nodiscard]] size_t
+  getDepthFromOrigin() const {
+    return ts_tree_cursor_current_depth(&impl);
+  }
 
 private:
   TSTreeCursor impl;
