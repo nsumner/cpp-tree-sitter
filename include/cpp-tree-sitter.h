@@ -302,11 +302,11 @@ public:
     : impl{ts_tree_cursor_copy(&cursor)}
       { }
 
-  // By default avoid copies and moves until the ergonomics are clearer.
+  // By default avoid copies until the ergonomics are clearer.
   Cursor(const Cursor&) = delete;
-  Cursor(Cursor&&) = delete;
+  Cursor(Cursor&&) = default;
   Cursor& operator=(const Cursor& other) = delete;
-  Cursor& operator=(Cursor&& other) = delete;
+  Cursor& operator=(Cursor&& other) = default;
 
   ~Cursor() {
     ts_tree_cursor_delete(&impl);
@@ -374,6 +374,66 @@ private:
 inline Node::getCursor() const {
   return Cursor{impl};
 }
+
+
+////////////////////////////////////////////////////////////////
+// Child node iterators
+////////////////////////////////////////////////////////////////
+
+// These iterators make it possible to use C++ views on Nodes for
+// easy processing.
+
+class ChildIteratorSentinel { };
+
+class ChildIterator {
+public:
+  using value_type = ts::Node;
+  using difference_type = int;
+  using iterator_category = std::input_iterator_tag;
+
+  explicit ChildIterator(const ts::Node& node)
+    : cursor{node.getCursor()},
+      atEnd{!cursor.gotoFirstChild()}
+      { }
+
+  value_type
+  operator*() const {
+    return cursor.getCurrentNode();
+  }
+
+  ChildIterator&
+  operator++() {
+    atEnd = !cursor.gotoNextSibling();
+    return *this;
+  }
+
+  ChildIterator&
+  operator++(int) {
+    atEnd = !cursor.gotoNextSibling();
+    return *this;
+  }
+
+  friend bool operator== (const ChildIterator& a, const ChildIteratorSentinel& b) { return a.atEnd; };
+  friend bool operator!= (const ChildIterator& a, const ChildIteratorSentinel& b) { return !a.atEnd; };
+
+private:
+  ts::Cursor cursor;
+  bool atEnd;
+};
+
+
+struct Children {
+  using iterator = ChildIterator;
+  using sentinel = ChildIteratorSentinel;
+
+  auto begin() const -> iterator { return ChildIterator{node}; }
+  auto end() const -> sentinel { return {}; }
+  const ts::Node& node;
+};
+
+static_assert(std::input_iterator<ChildIterator>);
+static_assert(std::sentinel_for<ChildIteratorSentinel, ChildIterator>);
+
 
 }
 
