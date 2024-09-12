@@ -303,10 +303,16 @@ public:
       { }
 
   // By default avoid copies until the ergonomics are clearer.
-  Cursor(const Cursor&) = delete;
-  Cursor(Cursor&&) = default;
-  Cursor& operator=(const Cursor& other) = delete;
-  Cursor& operator=(Cursor&& other) = default;
+  Cursor(const Cursor& other) = delete;
+  Cursor(Cursor&& other)
+    : impl{} {
+    std::swap(impl, other.impl);
+  }
+  Cursor& operator=(const Cursor& other)  = delete;
+  Cursor& operator=(Cursor&& other) {
+    std::swap(impl, other.impl);
+    return *this;
+  }
 
   ~Cursor() {
     ts_tree_cursor_delete(&impl);
