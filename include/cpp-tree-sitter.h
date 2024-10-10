@@ -1,6 +1,7 @@
 #ifndef CPP_TREE_SITTER_H
 #define CPP_TREE_SITTER_H
 
+#include <iterator>
 #include <memory>
 #include <string_view>
 
@@ -419,8 +420,10 @@ public:
     return *this;
   }
 
-  friend bool operator== (const ChildIterator& a, const ChildIteratorSentinel& b) { return a.atEnd; };
-  friend bool operator!= (const ChildIterator& a, const ChildIteratorSentinel& b) { return !a.atEnd; };
+  friend bool operator== (const ChildIterator& a, const ChildIteratorSentinel&)   { return a.atEnd; }
+  friend bool operator!= (const ChildIterator& a, const ChildIteratorSentinel& b) { return !(a == b); }
+  friend bool operator== (const ChildIteratorSentinel& b, const ChildIterator& a) { return a == b; }
+  friend bool operator!= (const ChildIteratorSentinel& b, const ChildIterator& a) { return a != b; }
 
 private:
   ts::Cursor cursor;
