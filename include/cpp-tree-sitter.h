@@ -4,7 +4,7 @@
 #include <iterator>
 #include <memory>
 #include <string_view>
-
+#include <cstdlib>
 #include <tree_sitter/api.h>
 
 // Including the API directly already pollutes the namespace, but the
@@ -179,7 +179,20 @@ struct Node {
 
   [[nodiscard]] std::string_view
   getFieldNameForChild(uint32_t child_position) const {
-    return ts_node_field_name_for_child(impl, child_position);
+    const auto *name = ts_node_field_name_for_child(impl, child_position);
+    if (!name) {
+      return std::string_view{};
+    }
+    return std::string_view{name};
+  }
+
+  [[nodiscard]] std::string_view
+  getFieldNameForNamedChild(uint32_t child_position) const {
+    const auto *name = ts_node_field_name_for_named_child(impl, child_position);
+    if (!name) {
+      return std::string_view{};
+    }
+    return std::string_view{name};
   }
 
   [[nodiscard]] Node
