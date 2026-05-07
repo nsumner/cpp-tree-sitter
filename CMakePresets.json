@@ -1,0 +1,203 @@
+﻿{
+  "version": 9,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 30,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "Base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "installDir": "${sourceDir}/out/install/${presetName}",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD_REQUIRED": true,
+        "CMAKE_CXX_EXTENSIONS": false,
+        "BUILD_SHARED_LIBS": false,
+        "CMAKE_DISABLE_SOURCE_CHANGES": true
+      }
+    },
+	  {
+      "name": "Release",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "Debug",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "x86_64",
+      "hidden": true,
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      }
+    },
+    {
+      "name": "x86",
+      "hidden": true,
+      "architecture": {
+        "value": "x86",
+        "strategy": "external"
+      }
+    },
+    {
+      "name": "Linux-Base",
+      "hidden": true,
+      "inherits": "Base",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "MacOS-Base",
+      "hidden": true,
+      "inherits": "Base",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "Windows-Base",
+      "hidden": true,
+      "inherits": "Base",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "x64-Debug-Linux",
+      "displayName": "x64 Debug (Linux)",
+      "inherits": [
+		    "Linux-Base",
+		    "Debug",
+		    "x86_64"
+      ]
+    },
+    {
+      "name": "x64-Debug-MacOS",
+      "displayName": "x64 Debug (MacOS)",
+	    "inherits": [
+		    "MacOS-Base",
+		    "Debug",
+		    "x86_64"
+      ]
+    },
+    {
+      "name": "x64-Debug-Windows",
+      "displayName": "x64 Debug (Windows)",
+	    "inherits": [
+		    "Windows-Base",
+		    "Debug",
+		    "x86_64"
+      ]
+    },
+    {
+      "name": "x64-Release-Linux",
+      "displayName": "x64 Release (Linux)",
+      "inherits": [
+        "Linux-Base",
+        "Release",
+        "x86_64"
+      ]
+    },
+    {
+      "name": "x64-Release-MacOS",
+      "displayName": "x64 Release (MacOS)",
+      "inherits": [
+        "MacOS-Base",
+        "Release",
+        "x86_64"
+      ]
+    },
+    {
+      "name": "x64-Release-Windows",
+      "displayName": "x64 Release (Windows)",
+      "inherits": [
+        "Windows-Base",
+        "Release",
+        "x86_64"
+      ]
+    },
+    {
+      "name": "x86-Debug-Linux",
+      "displayName": "x86 Debug (Linux)",
+      "inherits": [
+        "Linux-Base",
+        "Debug",
+        "x86"
+      ]
+    },
+    {
+      "name": "x86-Debug-MacOS",
+      "displayName": "x86 Debug (MacOS)",
+      "inherits": [
+        "MacOS-Base",
+        "Debug",
+        "x86"
+      ]
+    },
+    {
+      "name": "x86-Debug-Windows",
+      "displayName": "x86 Debug (Windows)",
+      "inherits": [
+        "Windows-Base",
+        "Debug",
+        "x86"
+      ]
+    },
+    {
+      "name": "x86-Release-Linux",
+      "displayName": "x86 Release (Linux)",
+      "inherits": [
+        "Linux-Base",
+        "Release",
+        "x86"
+      ]
+    },
+    {
+      "name": "x86-Release-MacOS",
+      "displayName": "x86 Release (MacOS)",
+      "inherits": [
+        "MacOS-Base",
+        "Release",
+        "x86"
+      ]
+    },
+    {
+      "name": "x86-Release-Windows",
+      "displayName": "x86 Release (Windows)",
+      "inherits": [
+        "Windows-Base",
+        "Release",
+        "x86"
+      ]
+    }
+  ]
+}

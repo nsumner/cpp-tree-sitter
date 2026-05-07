@@ -1,104 +1,146 @@
 # cpp-tree-sitter
 
-... is a simple C++ and CMake wrapper around tree-sitter. This project provides
-CMake definitions and a C++ wrapper that help with
-* managing tree-sitter and tree-sitter grammars as dependencies
-* accessing basic tree-sitter APIs for parse tree inspection
+`cpp-tree-sitter` is a modern, lightweight **C++11 (and newer)** wrapper around the [tree-sitter](https://github.com/tree-sitter/tree-sitter/) parsing library. 
+It provides a clean, RAII-compliant interface and robust CMake integration to simplify working with syntax trees in C++ projects.
 
-## Using in a CMake project
+## Key Features
+* **Modern RAII API:** Automatic memory management for `Parsers`, `Trees`, `Nodes`, and `Cursors` using standard smart pointers.
+* **Broad Compatibility:** Supports **C++11, C++14, C++17, C++20 and C++23**. It automatically leverages modern features like `std::string_view`, `std::concepts` and `std::expected` if available, while providing fallbacks for older standards.
+* **STL-style Iterators:** Use standard `for` loops to iterate over child nodes.
+* **Tree Visitor:** A built-in Depth-First Search (DFS) visitor (`ts::visit`) for easy tree traversal.
+* **Wasm Support:** High-level wrappers for WebAssembly-based grammars.
+* **Query Engine:** Full support for tree-sitter queries (patterns and captures).
+* **CMake Integration:** Seamless dependency management via [CPM.cmake](https://github.com/cpm-cmake/cpm.cmake).
 
-... requires the [CPM](https://github.com/cpm-cmake/CPM.cmake) CMake module
-for fetching and managing dependencies from github. Adding `cpp-tree-sitter`
-as a CPM dependency makes `cpp-tree-sitter` available as a library and
-provides a function, `add_grammar_from_repo`, that will download and
-make available a standard tree-sitter grammar on GitHub as a library.
+## Requirements
+* **Compiler:** C++11 compatible or newer (C++20/23 recommended).
+* **Build System:** [CMake](https://cmake.org/) 3.30 or newer.
 
-The tree-sitter parser
-[example](https://tree-sitter.github.io/tree-sitter/using-parsers#an-example-program)
-can be reproduced in a CMake project with CPM by including the following in
-`CMakeLists.txt`:
+## Using in a CMake Project
+The easiest way to integrate `cpp-tree-sitter` is via CPM. Adding this wrapper automatically makes the core `tree-sitter` library available as well.
 
 ```cmake
+cmake_minimum_required(VERSION 3.30)
+
+project(MyParser)
+
+set(CMAKE_CXX_STANDARD 17) # Works with 11, 14, 17, 20, 23
+
 include(cmake/CPM.cmake)
 
-# Downloads this wrapper library and tree-sitter.
-# Makes them available via the `cpp-tree-sitter` CMake library target.
+# Download the wrapper and tree-sitter core
 CPMAddPackage(
-  NAME cpp-tree-sitter
-  GIT_REPOSITORY https://github.com/nsumner/cpp-tree-sitter.git
-  GIT_TAG v0.0.1
+    NAME cpp-tree-sitter
+    GIT_REPOSITORY https://github.com/nsumner/cpp-tree-sitter.git
+    GIT_TAG main
 )
 
-# Downloads a tree-sitter grammar from github and makes it available as a
-# cmake library target.
-add_grammar_from_repo(tree-sitter-json                 # Defines the library name for a grammar
-  https://github.com/tree-sitter/tree-sitter-json.git  # Repository URL of a tree-sitter grammar
-  0.19.0                                               # Version tag for the grammar
+# Download a grammar (e.g., JSON) and make it a CMake target
+CPPTSAddGrammar(
+    NAME tree-sitter-json
+    GIT_REPOSITORY https://github.com/tree-sitter/tree-sitter-json.git
+    VERSION 0.24.8
 )
 
-# Use the library in a demo program.
-add_executable(demo)
-target_sources(demo
-  PRIVATE
-    demo.cpp
-)
-target_link_libraries(demo
-  tree-sitter-json
-  cpp-tree-sitter
-)
+add_executable(demo main.cpp)
+target_link_libraries(demo PRIVATE cpp-tree-sitter tree-sitter-json)
 ```
 
-Translating the parsing and tree inspection operations from the example to
-use the C++ wrappers then yields a `demo.cpp` like:
+## CMake Configuration
+
+`cpp-tree-sitter` provides several CMake options to customize the build process and manage dependencies.
+
+### Build Options
+
+You can set these options using `-DOPTION=VALUE` during the CMake configuration phase.
+
+|             Option            |      Default      |                                  Description                                   |
+|:------------------------------|:-----------------:|:-------------------------------------------------------------------------------|
+|     `CPP_TS_BUILD_TESTS`      | ON (if top-level) |                       Build unit tests for the library.                        |
+|     `CPP_TS_FEATURE_WASM`     |        OFF        |               Enable WebAssembly support (requires `wasmtime`).                |
+|     `CPP_TS_AMALGAMATED`      |        ON         | Build `tree-sitter` core using the amalgamated `lib.c` for faster compilation. |
+| `CPP_TS_MSVC_STATIC_RUNTIME`  |        OFF        |                    Link static MSVC runtime (/MT or /MTd).                     |
+
+### Path Variables
+
+These variables control where the library looks for external dependencies or grammars.
+
+* `CPP_TS_WASMTIME_PATH`: Path to a local `wasmtime` installation. If not set and WASM is enabled, CMake will automatically download the appropriate binary for your system.
+
+* `CPP_TS_GRAMMAR_PATH`: A global directory where you store your Tree-sitter grammars. If set, `CPPTSAddGrammar` will first look here before attempting to download from Git.
+
+* `CPP_TS_WASM_DIR`: (Default: `${CMAKE_BINARY_DIR}/wasm_files`) Directory where downloaded `.wasm` grammar files are stored. It is only valid if you pass option `FIND_ALSO_WASM_FILE` or `FIND_ONLY_WASM_FILE` to `CPPTSAddGrammar`
+
+## Grammar Management
+
+The `CPPTSAddGrammar` function automates fetching and building grammars.
+
+|       Argument        |                              Description                              |
+|:----------------------|:----------------------------------------------------------------------|
+|        `NAME`         |          The name of the grammar (e.g., `tree-sitter-json`).          |
+|   `GIT_REPOSITORY`    |                    URL to the grammar repository.                     |
+|  `VERSION`/`GIT_TAG`  |                 Specific version or tag to download.                  |
+|     `SOURCE_DIR`      |       Path to a local grammar source (overrides Git download).        |
+| `FIND_ALSO_WASM_FILE` | If set, attempts to download/find the `.wasm` binary for the grammar. |
+| `FIND_ONLY_WASM_FILE` | Skip building the static library and only look for the `.wasm` file.  |
+
+### Helper Functions
+
+* `CPPTSCopyWasmtime(TARGET <target>)`: (Windows) Copies `wasmtime.dll` to the target's output directory.
+
+## Quick Start Example
+
+This example demonstrates parsing a JSON string and using the visitor to inspect nodes.
 
 ```cpp
-#include <cassert>
-#include <cstdio>
-#include <memory>
+#include <iostream>
 #include <string>
-
+#include <functional>
 #include <cpp-tree-sitter.h>
 
-
-extern "C" {
-TSLanguage* tree_sitter_json();
-}
-
+// Extern declaration for the grammar function
+extern "C" TSLanguage* tree_sitter_json();
 
 int main() {
-  // Create a language and parser.
-  ts::Language language = tree_sitter_json();
-  ts::Parser parser{language};
+    // Initialize language and parser
+    ts::Language language = tree_sitter_json();
+    ts::Parser parser{language};
 
-  // Parse the provided string into a syntax tree.
-  std::string sourcecode = "[1, null]";
-  ts::Tree tree = parser.parseString(sourcecode);
+    // Parse source code into a syntax tree
+    std::string code = "[1, null, \"example\"]";
+    ts::Tree tree = parser.parseString(code);
+    ts::Node root = tree.getRootNode();
 
-  // Get the root node of the syntax tree. 
-  ts::Node root = tree.getRootNode();
+    // Use the Visitor for easy traversal (New in this fork)
+    ts::visit(root, [](ts::Node node) -> bool {
+        if (node.isNamed()) {
+            std::cout << "Node: " << node.getType() << " at " 
+                      << node.getByteRange().start << "\n";
+        }
+        return false;
+    });
 
-  // Get some child nodes.
-  ts::Node array = root.getNamedChild(0);
-  ts::Node number = array.getNamedChild(0);
+    // Or use STL-style iteration
+    for (auto child : ts::Children{root}) {
+        std::cout << "Child type: " << child.getType() << "\n";
+    }
 
-  // Check that the nodes have the expected types.
-  assert(root.getType() == "document");
-  assert(array.getType() == "array");
-  assert(number.getType() == "number");
-
-  // Check that the nodes have the expected child counts.
-  assert(root.getNumChildren() == 1);
-  assert(array.getNumChildren() == 5);
-  assert(array.getNumNamedChildren() == 2);
-  assert(number.getNumChildren() == 0);
-
-  // Print the syntax tree as an S-expression.
-  auto treestring = root.getSExpr();
-  printf("Syntax tree: %s\n", treestring.get());
-
-  return 0;
+    return 0; // Resources are cleaned up automatically via RAII
 }
 ```
 
-In particular, some of the underlying APIs now use method calls for
-easier discoverability, and resource cleaning is automatic.
+## Technical Improvements
+
+### Memory & Safety
+Implementation of a **Full RAII** architecture. It uses specialized `FreeHelper` functors for C-allocated `strings` and `shared_ptr` for `Language` objects to prevent use-after-free errors.
+
+### Compatibility Layer
+The library detects the C++ standard version to enable modern features like `std::optional`, C++20 `concepts` or C++23 `std::expected` dynamically, while providing a custom `StringView` fallback for C++11/14 environments.
+
+### Extended API
+* **Queries:** Perform pattern matching with `Query` and `QueryCursor` classes.
+* **Wasm:** Load grammars in WebAssembly environments via `WasmStore` and `WasmEngine`.
+* **Cross-Platform:** Fixed Windows-specific issues regarding file descriptors and DLL management (see `CPPTSCopyWasmtime`).
+
+## License
+This project is licensed under the [**MIT License**](LICENSE).
