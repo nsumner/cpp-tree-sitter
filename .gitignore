@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+# Scratch spaces for in-source experimentation
+tmp/
+build*/

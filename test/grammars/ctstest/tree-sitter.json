@@ -1,0 +1,14 @@
+{
+  "grammars": [
+    {
+      "name": "ctstest",
+      "scope": "source.ctstest",
+      "file-types": ["ctstest"]
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "Tiny fixture grammar for cpp-tree-sitter typed dispatch tests"
+  }
+}

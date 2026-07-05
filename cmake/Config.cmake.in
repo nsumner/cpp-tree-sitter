@@ -1,0 +1,24 @@
+@PACKAGE_INIT@
+
+# When built against a system tree-sitter, its exported targets refer to the
+# imported pkg-config target by name. That target must be recreated before the
+# targets file below is loaded.
+set(_cts_system_tree_sitter "@CTS_SYSTEM_TREE_SITTER@")
+if(_cts_system_tree_sitter)
+  include(CMakeFindDependencyMacro)
+  find_dependency(PkgConfig)
+  pkg_check_modules(system_tree_sitter IMPORTED_TARGET GLOBAL tree-sitter)
+  if(NOT system_tree_sitter_FOUND)
+    set(cpp-tree-sitter_FOUND FALSE)
+    set(cpp-tree-sitter_NOT_FOUND_MESSAGE
+      "cpp-tree-sitter was built against a system tree-sitter, but pkg-config \
+could not find `tree-sitter`. Set PKG_CONFIG_PATH to the directory containing \
+tree-sitter.pc.")
+    return()
+  endif()
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/cpp-tree-sitterTargets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/GrammarFunctions.cmake")
+
+check_required_components(cpp-tree-sitter)

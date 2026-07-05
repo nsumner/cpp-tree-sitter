@@ -1,0 +1,7 @@
+# (tree-sitter v0.26.10)
+# ts_query_new may leak an inner CaptureQuantifiers buffer on error-unwind
+# when a query pattern names an unknown field after a capture has been parsed
+# under it. The early `return TSQueryErrorField` at
+# lib/src/query.c:2841 skips the `capture_quantifiers_delete(&field_capture_quantifiers)`
+# that other exits from that block perform.
+leak:capture_quantifiers_add_for_id

@@ -1,0 +1,6 @@
+Checks: 'bugprone-*,cert-*,misc-*,modernize-*,performance-*,-clang-analyzer-*,-android-*,-fuchsia-*,-cppcoreguidelines-*,-darwin-*,-hicpp-*-linuxkernel-*,-llvm-*,-llvmlibc-*,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-avoid-do-while,-readability-magic-numbers,-modernize-use-trailing-return-type,-misc-use-anonymous-namespace,-misc-include-cleaner,-misc-no-recursion,-bugprone-exception-escape,-misc-non-private-member-variables-in-classes,-modernize-avoid-c-arrays,-performance-enum-size,-bugprone-unchecked-optional-access,-bugprone-easily-swappable-parameters'
+HeaderFilterRegex: '.*'
+ExcludeHeaderFilterRegex: '.*(doctest\.h|api\.h)'
+CheckOptions:
+  - key: bugprone-unused-return-value.AllowCastToVoid
+    value: true

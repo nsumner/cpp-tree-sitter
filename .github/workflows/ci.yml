@@ -1,0 +1,128 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - { cc: gcc-15, cxx: g++-15 }
+          - { cc: clang-21, cxx: clang++-21 }
+        preset:
+          - sanitize
+          - release
+    runs-on: ubuntu-26.04
+    env:
+      CC: ${{ matrix.compiler.cc }}
+      CXX: ${{ matrix.compiler.cxx }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }}
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }} -j
+      - name: Test
+        run: ctest --preset ${{ matrix.preset }}
+      - name: Run examples
+        run: |
+          ./build/${{ matrix.preset }}/examples/parse_demo
+          ./build/${{ matrix.preset }}/examples/query_demo
+          ./build/${{ matrix.preset }}/examples/visitor_demo
+          ./build/${{ matrix.preset }}/examples/typed_demo
+
+  cmake-floor:
+    runs-on: ubuntu-24.04
+    env:
+      CC: gcc-14
+      CXX: g++-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake --preset default
+      - name: Build
+        run: cmake --build --preset default -j
+      - name: Test
+        run: ctest --preset default
+
+  consumer:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure consumer project
+        run: cmake -S test/consumer -B build-consumer
+      - name: Build consumer project
+        run: cmake --build build-consumer -j
+      - name: Run consumer demo
+        run: ./build-consumer/demo
+      - name: Clone tree-sitter-typescript for from-path check
+        run: git clone --depth 1 https://github.com/tree-sitter/tree-sitter-typescript /tmp/ts-typescript
+      - name: Write from-path scratch consumer
+        run: |
+          mkdir -p /tmp/from-path-check
+          cat > /tmp/from-path-check/CMakeLists.txt <<'EOF'
+          cmake_minimum_required(VERSION 3.28...4.2)
+          project(from-path-check LANGUAGES C CXX)
+          include(${CPP_TREE_SITTER_DIR}/cmake/CPM.cmake)
+          CPMAddPackage(NAME cpp-tree-sitter SOURCE_DIR ${CPP_TREE_SITTER_DIR})
+          add_grammar_from_path(NAME tree-sitter-typescript
+            PATH /tmp/ts-typescript
+            SUBDIRECTORY typescript
+          )
+          add_executable(check check.cpp)
+          target_compile_features(check PRIVATE cxx_std_23)
+          target_link_libraries(check PRIVATE tree-sitter-typescript cpp-tree-sitter)
+          EOF
+          cat > /tmp/from-path-check/check.cpp <<'EOF'
+          #include <cstdlib>
+          #include <cpp-tree-sitter.h>
+          extern "C" TSLanguage* tree_sitter_typescript();
+          int main() {
+            auto parser = ts::Parser::create(tree_sitter_typescript());
+            if (!parser) return EXIT_FAILURE;
+            auto tree = parser->parse("let x = 1;");
+            return (tree && !tree->hasError()) ? EXIT_SUCCESS : EXIT_FAILURE;
+          }
+          EOF
+      - name: Configure from-path scratch consumer
+        run: >
+          cmake -S /tmp/from-path-check -B /tmp/from-path-check/build
+          -DCPP_TREE_SITTER_DIR=${{ github.workspace }}
+      - name: Build from-path scratch consumer
+        run: cmake --build /tmp/from-path-check/build -j
+      - name: Run from-path scratch consumer
+        run: /tmp/from-path-check/build/check && echo FROM-PATH-OK
+      # The from-path check above consumes through CPM. The steps below cover
+      # the other an installed package found via find_package(CONFIG), where
+      # grammars link the exported `cts::tree-sitter` instead.
+      - name: Install cpp-tree-sitter to a prefix
+        run: |
+          cmake -S . -B build-install -DCTS_BUILD_TESTS=OFF -DCTS_BUILD_EXAMPLES=OFF
+          cmake --build build-install -j
+          cmake --install build-install --prefix /tmp/cts-prefix
+      - name: Write installed-package scratch consumer
+        run: |
+          mkdir -p /tmp/installed-check
+          cat > /tmp/installed-check/CMakeLists.txt <<'EOF'
+          cmake_minimum_required(VERSION 3.28...4.2)
+          project(installed-check LANGUAGES C CXX)
+          find_package(cpp-tree-sitter CONFIG REQUIRED)
+          add_grammar_from_path(NAME tree-sitter-typescript
+            PATH /tmp/ts-typescript
+            SUBDIRECTORY typescript
+          )
+          add_executable(check check.cpp)
+          target_compile_features(check PRIVATE cxx_std_23)
+          target_link_libraries(check PRIVATE tree-sitter-typescript cts::cpp-tree-sitter)
+          EOF
+          cp /tmp/from-path-check/check.cpp /tmp/installed-check/check.cpp
+      - name: Configure installed-package scratch consumer
+        run: >
+          cmake -S /tmp/installed-check -B /tmp/installed-check/build
+          -DCMAKE_PREFIX_PATH=/tmp/cts-prefix
+      - name: Build installed-package scratch consumer
+        run: cmake --build /tmp/installed-check/build -j
+      - name: Run installed-package scratch consumer
+        run: /tmp/installed-check/build/check && echo FIND-PACKAGE-OK
