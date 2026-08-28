@@ -13,7 +13,12 @@
 #include <vector>
 
 #include <tree_sitter/api.h>
-#include <unistd.h>
+
+#if defined(_WIN32)
+#  include <io.h>
+#else
+#  include <unistd.h>
+#endif
 
 #include <cts/common.h>
 #include <cts/language.h>
